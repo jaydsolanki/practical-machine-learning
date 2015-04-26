@@ -19,11 +19,12 @@ testing_set <- read.csv("pml-testing.csv")
 ```
 
 Because I want to be able to estimate the out-of-sample error, I randomly split the full training data (training_set) into a smaller training set (training_set1) and a validation set (training_set2):
-
+```
 set.seed(10)
 inTrain <- createDataPartition(y=training_set$classe, p=0.7, list=F)
 training_set1 <- training_set[inTrain, ]
 training_set2 <- training_set[-inTrain, ]
+```
 
 I am now going to reduce the number of features by removing variables with nearly zero variance, variables that are almost always NA, and variables that don’t make intuitive sense for prediction. Note that I decide which ones to remove by analyzing training_set1, and perform the identical removals on training_set2:
 remove variables with nearly zero variance
