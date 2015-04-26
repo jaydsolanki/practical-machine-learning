@@ -8,14 +8,15 @@ I have used the code below when creating the model, estimating the out-of-sample
 #Preparation Of Data
 
 I load the caret package, and read in the training and testing data:
-
+```
 library(caret)
 
- Loading required package: lattice
- Loading required package: ggplot2
+Loading required package: lattice
+Loading required package: ggplot2
 
 training_set <- read.csv("pml-training.csv")
 testing_set <- read.csv("pml-testing.csv")
+```
 
 Because I want to be able to estimate the out-of-sample error, I randomly split the full training data (training_set) into a smaller training set (training_set1) and a validation set (training_set2):
 
@@ -25,20 +26,27 @@ training_set1 <- training_set[inTrain, ]
 training_set2 <- training_set[-inTrain, ]
 
 I am now going to reduce the number of features by removing variables with nearly zero variance, variables that are almost always NA, and variables that don’t make intuitive sense for prediction. Note that I decide which ones to remove by analyzing training_set1, and perform the identical removals on training_set2:
+remove variables with nearly zero variance
 
- remove variables with nearly zero variance
+```
 nzv <- nearZeroVar(training_set1)
 training_set1 <- training_set1[, -nzv]
 training_set2 <- training_set2[, -nzv]
+```
 
  remove variables that are almost always NA
+
+```
 mostlyNA <- sapply(training_set1, function(x) mean(is.na(x))) > 0.95
 training_set1 <- training_set1[, mostlyNA==F]
 training_set2 <- training_set2[, mostlyNA==F]
+```
 
  remove variables that don't make intuitive sense for prediction (X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp), which happen to be the first five variables
+```
 training_set1 <- training_set1[, -(1:5)]
 training_set2 <- training_set2[, -(1:5)]
+```
 
 # Model Building
 
@@ -48,17 +56,20 @@ I decided to start with a Random Forest model, to see if it would have acceptabl
 fitControl <- trainControl(method="cv", number=3, verboseIter=F)
 
  fit model on training_set1
+```
 fit <- train(classe ~ ., data=training_set1, method="rf", trControl=fitControl)
+Loading required package: randomForest
+randomForest 4.6-10
+Type rfNews() to see new features/changes/bug fixes.
+```
 
- Loading required package: randomForest
- randomForest 4.6-10
- Type rfNews() to see new features/changes/bug fixes.
-
- print final model to see tuning parameters it chose
+print final model to see tuning parameters it chose
+```
 fit$finalModel
-
+```
  
  Call:
+ ```
   randomForest(x = x, y = y, mtry = param$mtry) 
                 Type of random forest: classification
                       Number of trees: 500
@@ -72,7 +83,7 @@ fit$finalModel
  C    0    5 2391    0    0    0.002087
  D    0    0    8 2243    1    0.003996
  E    0    0    0    6 2519    0.002376
-
+```
 I see that it decided to use 500 trees and try 27 variables at each split.
 
 # Model Evaluation and Selection
@@ -80,9 +91,11 @@ I see that it decided to use 500 trees and try 27 variables at each split.
 Now, I use the fitted model to predict the label (“classe”) in training_set2, and show the confusion matrix to compare the predicted versus the actual labels:
 
  use model to predict classe in validation set (training_set2)
+```
 preds <- predict(fit, newdata=training_set2)
-
+```
  show confusion matrix to get estimate of out-of-sample error
+```
 confusionMatrix(training_set2$classe, preds)
 
  Confusion Matrix and Statistics
@@ -116,6 +129,7 @@ confusionMatrix(training_set2$classe, preds)
  Detection Rate          0.284    0.193    0.174    0.163    0.184
  Detection Prevalence    0.284    0.194    0.174    0.164    0.184
  Balanced Accuracy       0.999    0.999    0.998    0.998    1.000
+```
 
 The accuracy is 99.8%, thus my predicted accuracy for the out-of-sample error is 0.2%.
 
@@ -125,34 +139,42 @@ This is an excellent result, so rather than trying additional algorithms, I will
 Before predicting on the test set, it is important to train the model on the full training set (training_set), rather than using a model trained on a reduced training set (training_set1), in order to produce the most accurate predictions. Therefore, I now repeat everything I did above on training_set and testing_set:
 
  remove variables with nearly zero variance
+```
 nzv <- nearZeroVar(training_set)
 training_set <- training_set[, -nzv]
 testing_set <- testing_set[, -nzv]
-
+```
  remove variables that are almost always NA
+```
 mostlyNA <- sapply(training_set, function(x) mean(is.na(x))) > 0.95
 training_set <- training_set[, mostlyNA==F]
 testing_set <- testing_set[, mostlyNA==F]
-
+```
  remove variables that don't make intuitive sense for prediction (X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp), which happen to be the first five variables
+```
 training_set <- training_set[, -(1:5)]
 testing_set <- testing_set[, -(1:5)]
-
+```
  re-fit model using full training set (training_set)
+```
 fitControl <- trainControl(method="cv", number=3, verboseIter=F)
 fit <- train(classe ~ ., data=training_set, method="rf", trControl=fitControl)
-
+```
 #Making Test Set Predictions
 
 Now, I use the model fit on training_set to predict the label for the observations in testing_set, and write those predictions to individual files:
 
  predict on test set
+```
 preds <- predict(fit, newdata=testing_set)
+```
 
  convert predictions to character vector
+```
 preds <- as.character(preds)
-
+```
  create function to write predictions to files
+```
 pml_write_files <- function(x) {
     n <- length(x)
     for(i in 1:n) {
@@ -160,8 +182,9 @@ pml_write_files <- function(x) {
         write.table(x[i], file=filename, quote=F, row.names=F, col.names=F)
     }
 }
-
+```
  create prediction files to submit
+```
 pml_write_files(preds)
-
+```
 
